@@ -6,7 +6,6 @@
   "scripts": {
     "dev": "tsx watch src/server.ts",
     "start": "tsx src/server.ts",
-    "build": "tsc",
     "typecheck": "tsc --noEmit"
   },
   "keywords": [],
