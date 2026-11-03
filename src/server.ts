@@ -1,4 +1,5 @@
 import "dotenv/config";
+import { timingSafeEqual } from "node:crypto";
 import Fastify from "fastify";
 import swagger from "@fastify/swagger";
 import swaggerUi from "@fastify/swagger-ui";
@@ -13,9 +14,20 @@ import { trendsRoutes } from "./routes/trends.js";
 
 const PORT = parseInt(process.env.PORT ?? "4000", 10);
 const HOST = process.env.HOST ?? "0.0.0.0";
+// When set, every /api call must send this value in the `x-api-key` header. Leave it unset to run open (on your own machine).
+const API_KEY = process.env.API_KEY ?? "";
+
+function keyMatches(sent: unknown): boolean {
+  if (typeof sent !== "string") return false;
+  const a = Buffer.from(sent);
+  const b = Buffer.from(API_KEY);
+  return a.length === b.length && timingSafeEqual(a, b);
+}
 
 async function main() {
   const app = Fastify({
+    // Behind a hosting front end (Azure App Service) the client address comes in X-Forwarded-For; without this every caller would share one rate-limit bucket.
+    trustProxy: true,
     logger: {
       level: "info",
       transport: {
@@ -38,9 +50,23 @@ async function main() {
       tags: [
         { name: "Tweets", description: "Tweet URLs and timelines" },
       ],
+      // With an API key set, Swagger shows an "Authorize" button for it.
+      ...(API_KEY
+        ? { components: { securitySchemes: { apiKey: { type: "apiKey" as const, name: "x-api-key", in: "header" as const } } }, security: [{ apiKey: [] }] }
+        : {}),
     },
   });
   await app.register(swaggerUi, { routePrefix: "/docs", uiConfig: { docExpansion: "list", deepLinking: true } });
+
+  // API key (optional): the docs page stays open, every /api call needs the key
+  if (API_KEY) {
+    app.addHook("onRequest", async (request, reply) => {
+      if (!request.url.startsWith("/api/")) return;
+      if (!keyMatches(request.headers["x-api-key"])) {
+        return reply.code(401).send({ ok: false, error: "Missing or wrong x-api-key header" });
+      }
+    });
+  }
 
   // Rate limiting
   await app.register(rateLimit, {

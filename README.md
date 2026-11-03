@@ -95,6 +95,7 @@ Optional. Copy `.env.example` to `.env`.
 |---|---|---|
 | `PORT` | `4000` | Port to listen on |
 | `HOST` | `0.0.0.0` | Address to listen on (`127.0.0.1` keeps it to your machine) |
+| `API_KEY` | none | When set, every `/api` call must send it in an `x-api-key` header (Swagger shows an Authorize button). Set it whenever the API is on the internet. |
 | `RATE_LIMIT_MAX` | `60` | Requests allowed per window, per client |
 | `RATE_LIMIT_WINDOW_MS` | `60000` | The window |
 | `TWITTER_GUEST_TIMEOUT` | `10000` | Milliseconds to wait for X |
